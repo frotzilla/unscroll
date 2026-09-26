@@ -18,10 +18,9 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Home
-import androidx.compose.material.icons.filled.Settings
-import androidx.compose.material.icons.filled.SlowMotionVideo
-import androidx.compose.material.icons.filled.Swipe
+import androidx.compose.material.icons.outlined.Apps
+import androidx.compose.material.icons.outlined.Tune
+import androidx.compose.material.icons.outlined.WbSunny
 import androidx.compose.material3.Icon
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -39,7 +38,7 @@ import com.redwan.unscroll.ui.screens.*
 
 /** Simple back stack navigation. Routes are strings like "app/com.example". */
 class Nav {
-    val stack = mutableStateListOf("home")
+    val stack = mutableStateListOf("today")
     val current get() = stack.last()
     fun go(route: String) { stack.add(route) }
     fun tab(route: String) { stack.clear(); stack.add(route) }
@@ -81,45 +80,36 @@ class MainActivity : ComponentActivity() {
 }
 
 private val tabs = listOf(
-    Triple("home", "Home", Icons.Filled.Home),
-    Triple("reels", "AntiReels", Icons.Filled.SlowMotionVideo),
-    Triple("scroll", "AntiScroll", Icons.Filled.Swipe),
-    Triple("settings", "Settings", Icons.Filled.Settings),
+    Triple("today", "Today", Icons.Outlined.WbSunny),
+    Triple("apps", "Apps", Icons.Outlined.Apps),
+    Triple("settings", "Settings", Icons.Outlined.Tune),
 )
 
 @Composable
 fun App(nav: Nav) {
     @Suppress("UNUSED_VARIABLE") val rev = Store.rev.intValue // recompose on any settings change
-    BackHandler(enabled = nav.stack.size > 1 || nav.current != "home") {
-        if (!nav.back()) nav.tab("home")
+    BackHandler(enabled = nav.stack.size > 1 || nav.current != "today") {
+        if (!nav.back()) nav.tab("today")
     }
     val route = nav.current
     val root = tabs.any { it.first == route }
     Column(Modifier.fillMaxSize()) {
         Box(Modifier.weight(1f)) {
-            val back: () -> Unit = { if (!nav.back()) nav.tab("home") }
+            val back: () -> Unit = { if (!nav.back()) nav.tab("today") }
             when {
-                route == "home" -> HomeScreen(nav)
-                route == "reels" -> ReelsScreen(nav, onBack = null)
-                route == "reels/sub" -> ReelsScreen(nav, onBack = back)
-                route == "scroll" -> ScrollListScreen(nav)
+                route == "today" -> TodayScreen(nav)
+                route == "apps" -> AppsScreen(nav)
                 route == "settings" -> SettingsScreen(nav)
-                route.startsWith("app/") -> AppDetailScreen(nav, route.removePrefix("app/"), back)
-                route == "tips" -> TipsScreen(nav, back)
-                route == "tips/why" -> WhyEditor(back)
-                route == "tips/commit" -> CommitEditor(back)
-                route == "tips/triggers" -> TriggersEditor(back)
-                route == "tips/env" -> EnvironmentEditor(nav, back)
-                route == "tips/brain" -> BrainScreen(back)
-                route == "breaks" -> BreaksScreen(nav, back)
-                route.startsWith("break/") -> BreakEditor(route.removePrefix("break/").toLong(), back)
+                route.startsWith("app/") -> AppScreen(route.removePrefix("app/"), back)
+                route == "lockout" -> LockoutScreen(nav, back)
+                route == "free" -> FreeTimeScreen(nav, back)
+                route.startsWith("free/") -> FreeTimeEditor(route.removePrefix("free/").toLong(), back)
                 route == "insights" -> InsightsScreen(back)
-                route == "messages" -> MessagesScreen(back)
                 route == "sites" -> SitesScreen(back)
                 route == "password" -> PasswordScreen(back)
                 route == "trouble" -> TroubleshootingScreen(back)
-                route == "setup" -> SetupScreen(onDone = { Store.onboarded = true; nav.tab("home") }, onBack = if (Store.onboarded) back else null)
-                else -> HomeScreen(nav)
+                route == "setup" -> SetupScreen(onDone = { Store.onboarded = true; nav.tab("today") }, onBack = if (Store.onboarded) back else null)
+                else -> TodayScreen(nav)
             }
         }
         if (root) BottomBar(route) { nav.tab(it) }

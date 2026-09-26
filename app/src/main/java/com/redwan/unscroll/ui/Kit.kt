@@ -22,7 +22,10 @@ import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
-import androidx.compose.ui.graphics.RectangleShape
+import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material.icons.filled.Check
+import androidx.compose.ui.draw.clip
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
@@ -70,11 +73,12 @@ private val scheme: ColorScheme = darkColorScheme(
     onSurface = C.text, onBackground = C.text, surfaceVariant = C.card2, outline = C.line,
 )
 
-private val sq = androidx.compose.foundation.shape.RoundedCornerShape(0.dp)
-private val square = Shapes(sq, sq, sq, sq, sq)
+val Round = RoundedCornerShape(14.dp)
+val Pill = RoundedCornerShape(50)
+private val shapes = Shapes(RoundedCornerShape(8.dp), RoundedCornerShape(12.dp), Round, RoundedCornerShape(18.dp), RoundedCornerShape(24.dp))
 
 @Composable
-fun UnscrollTheme(content: @Composable () -> Unit) = MaterialTheme(colorScheme = scheme, shapes = square, content = content)
+fun UnscrollTheme(content: @Composable () -> Unit) = MaterialTheme(colorScheme = scheme, shapes = shapes, content = content)
 
 @Composable
 fun TopBar(title: String, onBack: (() -> Unit)? = null, actions: @Composable RowScope.() -> Unit = {}) {
@@ -107,6 +111,7 @@ fun Card(modifier: Modifier = Modifier, onClick: (() -> Unit)? = null, content: 
     Column(
         modifier
             .fillMaxWidth()
+            .clip(Round)
             .background(C.card)
             .then(if (onClick != null) Modifier.clickable(onClick = onClick) else Modifier)
             .padding(16.dp),
@@ -122,7 +127,7 @@ fun Body(text: String, color: Color = C.muted, size: Int = 14, modifier: Modifie
 fun Title(text: String, size: Int = 17, color: Color = C.text, modifier: Modifier = Modifier) =
     Text(text, color = color, fontSize = size.sp, fontWeight = FontWeight.SemiBold, modifier = modifier)
 
-/** A square toggle, to match the square corners everywhere else. */
+/** A compact pill toggle. */
 @Composable
 fun SquareSwitch(checked: Boolean, onChange: (Boolean) -> Unit, enabled: Boolean = true) {
     val x = animateDpAsState(if (checked) 22.dp else 2.dp, label = "thumb")
@@ -130,22 +135,23 @@ fun SquareSwitch(checked: Boolean, onChange: (Boolean) -> Unit, enabled: Boolean
         Modifier
             .size(46.dp, 26.dp)
             .alpha(if (enabled) 1f else 0.35f)
+            .clip(Pill)
             .background(if (checked) C.pink else C.card2)
-            .border(1.dp, if (checked) C.pink else C.line)
+            .border(1.dp, if (checked) C.pink else C.line, Pill)
             .clickable(enabled = enabled) { onChange(!checked) },
     ) {
-        Box(Modifier.offset(x = x.value, y = 3.dp).size(20.dp).background(if (checked) Color.Black else C.muted))
+        Box(Modifier.offset(x = x.value, y = 3.dp).size(20.dp).clip(CircleShape).background(if (checked) Color.White else C.muted))
     }
 }
 
 @Composable
 fun SquareCheck(checked: Boolean, onChange: (Boolean) -> Unit) {
     Box(
-        Modifier.size(22.dp).border(2.dp, if (checked) C.pink else C.muted).background(if (checked) C.pink else Color.Transparent)
+        Modifier.size(22.dp).clip(RoundedCornerShape(6.dp)).border(2.dp, if (checked) C.pink else C.muted, RoundedCornerShape(6.dp)).background(if (checked) C.pink else Color.Transparent)
             .clickable { onChange(!checked) },
         contentAlignment = Alignment.Center,
     ) {
-        if (checked) Box(Modifier.size(8.dp).background(Color.Black))
+        if (checked) Icon(Icons.Filled.Check, null, tint = Color.Black, modifier = Modifier.size(16.dp))
     }
 }
 
@@ -175,7 +181,7 @@ fun ToggleRow(title: String, sub: String? = null, checked: Boolean, enabled: Boo
 fun Badge(text: String) {
     Text(
         text, color = Color.Black, fontSize = 10.sp, fontWeight = FontWeight.Bold,
-        modifier = Modifier.padding(start = 8.dp).background(C.pink).padding(horizontal = 5.dp, vertical = 1.dp),
+        modifier = Modifier.padding(start = 8.dp).clip(Pill).background(C.pink).padding(horizontal = 7.dp, vertical = 1.dp),
     )
 }
 
@@ -201,7 +207,7 @@ fun NavRow(title: String, sub: String? = null, trailing: String? = null, icon: I
 @Composable
 fun PinkButton(text: String, modifier: Modifier = Modifier, enabled: Boolean = true, onClick: () -> Unit) {
     Box(
-        modifier.fillMaxWidth().height(50.dp).alpha(if (enabled) 1f else 0.35f).background(C.pink).clickable(enabled = enabled, onClick = onClick),
+        modifier.fillMaxWidth().height(50.dp).alpha(if (enabled) 1f else 0.35f).clip(Round).background(C.pink).clickable(enabled = enabled, onClick = onClick),
         contentAlignment = Alignment.Center,
     ) { Text(text, color = Color.Black, fontSize = 16.sp, fontWeight = FontWeight.SemiBold) }
 }
@@ -209,7 +215,7 @@ fun PinkButton(text: String, modifier: Modifier = Modifier, enabled: Boolean = t
 @Composable
 fun GhostButton(text: String, modifier: Modifier = Modifier, enabled: Boolean = true, onClick: () -> Unit) {
     Box(
-        modifier.fillMaxWidth().height(50.dp).alpha(if (enabled) 1f else 0.35f).border(BorderStroke(1.dp, C.line)).clickable(enabled = enabled, onClick = onClick),
+        modifier.fillMaxWidth().height(50.dp).alpha(if (enabled) 1f else 0.35f).clip(Round).border(BorderStroke(1.dp, C.line), Round).clickable(enabled = enabled, onClick = onClick),
         contentAlignment = Alignment.Center,
     ) { Text(text, color = C.text, fontSize = 16.sp) }
 }
@@ -218,9 +224,11 @@ fun GhostButton(text: String, modifier: Modifier = Modifier, enabled: Boolean = 
 fun Chip(text: String, selected: Boolean, modifier: Modifier = Modifier, onClick: () -> Unit) {
     Text(
         text, color = if (selected) Color.Black else C.text, fontSize = 14.sp,
+        textAlign = androidx.compose.ui.text.style.TextAlign.Center,
         modifier = modifier
+            .clip(Pill)
             .background(if (selected) C.pink else C.card2)
-            .border(1.dp, if (selected) C.pink else C.line)
+            .border(1.dp, if (selected) C.pink else C.line, Pill)
             .clickable(onClick = onClick)
             .padding(horizontal = 14.dp, vertical = 9.dp),
     )
@@ -229,11 +237,11 @@ fun Chip(text: String, selected: Boolean, modifier: Modifier = Modifier, onClick
 @Composable
 fun Stepper(value: String, onDec: () -> Unit, onInc: () -> Unit) {
     Row(verticalAlignment = Alignment.CenterVertically) {
-        Box(Modifier.size(36.dp).border(1.dp, C.line).clickable(onClick = onDec), contentAlignment = Alignment.Center) {
+        Box(Modifier.size(36.dp).clip(CircleShape).border(1.dp, C.line, CircleShape).clickable(onClick = onDec), contentAlignment = Alignment.Center) {
             Icon(Icons.Filled.Remove, "Decrease", tint = C.text, modifier = Modifier.size(18.dp))
         }
         Text(value, color = C.text, fontSize = 15.sp, modifier = Modifier.width(76.dp), textAlign = androidx.compose.ui.text.style.TextAlign.Center)
-        Box(Modifier.size(36.dp).border(1.dp, C.line).clickable(onClick = onInc), contentAlignment = Alignment.Center) {
+        Box(Modifier.size(36.dp).clip(CircleShape).border(1.dp, C.line, CircleShape).clickable(onClick = onInc), contentAlignment = Alignment.Center) {
             Icon(Icons.Filled.Add, "Increase", tint = C.text, modifier = Modifier.size(18.dp))
         }
     }
@@ -247,7 +255,7 @@ fun Field(
     OutlinedTextField(
         value = value, onValueChange = onChange, modifier = modifier.fillMaxWidth(),
         placeholder = { Text(placeholder, color = C.muted) }, singleLine = singleLine, minLines = minLines,
-        shape = RectangleShape,
+        shape = RoundedCornerShape(12.dp),
         keyboardOptions = if (number) KeyboardOptions(keyboardType = KeyboardType.NumberPassword) else KeyboardOptions.Default,
         visualTransformation = if (secret) androidx.compose.ui.text.input.PasswordVisualTransformation() else VisualTransformation.None,
         colors = OutlinedTextFieldDefaults.colors(
@@ -261,7 +269,7 @@ fun Field(
 @Composable
 fun SquareDialog(onDismiss: () -> Unit, content: @Composable ColumnScope.() -> Unit) {
     Dialog(onDismissRequest = onDismiss) {
-        Column(Modifier.fillMaxWidth().background(C.card).border(1.dp, C.line).padding(20.dp), content = content)
+        Column(Modifier.fillMaxWidth().clip(RoundedCornerShape(22.dp)).background(C.card).padding(22.dp), content = content)
     }
 }
 
@@ -274,8 +282,8 @@ fun Divider() = Box(Modifier.fillMaxWidth().height(1.dp).background(C.line))
 /** A bar filled to [fraction]. */
 @Composable
 fun Meter(fraction: Float, modifier: Modifier = Modifier, color: Color = C.pink) {
-    Box(modifier.fillMaxWidth().height(6.dp).background(C.card2)) {
-        Box(Modifier.fillMaxWidth(fraction.coerceIn(0f, 1f)).height(6.dp).background(color))
+    Box(modifier.fillMaxWidth().height(6.dp).clip(Pill).background(C.card2)) {
+        Box(Modifier.fillMaxWidth(fraction.coerceIn(0f, 1f)).height(6.dp).clip(Pill).background(color))
     }
 }
 
@@ -307,5 +315,5 @@ fun AppIcon(pkg: String, size: Int = 36) {
     val ctx = LocalContext.current
     val img = remember(pkg) { appIcon(ctx, pkg) }
     if (img != null) Image(img, null, Modifier.size(size.dp))
-    else Box(Modifier.size(size.dp).background(C.card2))
+    else Box(Modifier.size(size.dp).clip(RoundedCornerShape(8.dp)).background(C.card2))
 }

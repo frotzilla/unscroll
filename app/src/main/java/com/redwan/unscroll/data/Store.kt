@@ -131,6 +131,10 @@ object Store {
     var antiPause: Boolean
         get() = bool("anti_pause", false)
         set(v) = setBool("anti_pause", v)
+    /** Snoozes allowed per day before snoozing needs the typed sentence. */
+    var snoozeFreeCount: Int
+        get() = sp.getInt("snooze_free", 2)
+        set(v) = edit { putInt("snooze_free", v) }
     var hideBreaks: Boolean
         get() = bool("hide_breaks", false)
         set(v) = setBool("hide_breaks", v)
@@ -140,10 +144,6 @@ object Store {
     var uninstallProtect: Boolean
         get() = bool("uninstall_protect", false)
         set(v) = setBool("uninstall_protect", v)
-
-    var messages: List<String>
-        get() = if (sp.contains("messages")) JSONArray(str("messages", "[]")).strings() else Catalog.defaultMessages
-        set(v) = setStr("messages", JSONArray(v).toString())
 
     // Password
     val hasPin get() = sp.contains("pin_hash")
@@ -173,42 +173,6 @@ object Store {
         get() = str("safe_url", "https://en.wikipedia.org/wiki/Special:Random")
         set(v) = setStr("safe_url", v)
 
-    // Tips
-    var why: String
-        get() = str("why_text", "")
-        set(v) = setStr("why_text", v)
-    var whyCosts: Set<String>
-        get() = sp.getStringSet("why_costs", emptySet())!!.toSet()
-        set(v) = edit { putStringSet("why_costs", v) }
-    var whyFuture: String
-        get() = str("why_future", "")
-        set(v) = setStr("why_future", v)
-    var commitmentIdx: Int
-        get() = sp.getInt("commit_idx", -1)
-        set(v) = edit { putInt("commit_idx", v) }
-    var commitmentCustom: String
-        get() = str("commit_custom", "")
-        set(v) = setStr("commit_custom", v)
-    var triggerPlans: List<TriggerPlan>
-        get() = JSONArray(str("trigger_plans", "[]")).objects().map(TriggerPlan::fromJson)
-        set(v) = setStr("trigger_plans", JSONArray(v.map { it.toJson() }).toString())
-    var environment: Set<String>
-        get() = sp.getStringSet("environment", emptySet())!!.toSet()
-        set(v) = edit { putStringSet("environment", v) }
-
-    fun commitmentText(): String? = when (val i = commitmentIdx) {
-        -1 -> null
-        Catalog.commitments.lastIndex -> commitmentCustom.ifBlank { null }
-        else -> Catalog.commitments.getOrNull(i)?.title
-    }
-
-    fun tipsProgress(): Int = listOf(
-        why.isNotBlank() || whyCosts.isNotEmpty(),
-        commitmentText() != null,
-        triggerPlans.isNotEmpty(),
-        environment.isNotEmpty(),
-    ).count { it }
-
     // Breaks
     var breaks: List<BreakRule>
         get() = JSONArray(str("breaks", "[]")).objects().map(BreakRule::fromJson)
@@ -230,8 +194,37 @@ object Store {
         }
     }
 
+    // Focus sessions
+    var focusUntil: Long
+        get() = sp.getLong("focus_until", 0)
+        set(v) = edit { putLong("focus_until", v) }
+    val focusing get() = System.currentTimeMillis() < focusUntil
+
+    // Daily allowance: foreground milliseconds per app, today only
+    fun usedToday(pkg: String): Long {
+        val o = JSONObject(str("used", "{}"))
+        return if (o.optLong("day", -1) == today()) o.optJSONObject("ms")?.optLong(pkg) ?: 0 else 0
+    }
+
+    fun addUsed(pkg: String, ms: Long) {
+        if (ms <= 0) return
+        var o = JSONObject(str("used", "{}"))
+        if (o.optLong("day", -1) != today()) o = JSONObject().put("day", today()).put("ms", JSONObject())
+        val m = o.getJSONObject("ms")
+        m.put(pkg, m.optLong(pkg) + ms)
+        prefs.edit().putString("used", o.toString()).apply()
+    }
+
     // Counters shown in Insights
-    enum class Counter { REELS, POPUPS, SITES, COOLDOWNS }
+    enum class Counter { REELS, POPUPS, SITES, COOLDOWNS, RECONSIDERED, FOCUS, SCROLL_CM }
+
+    fun add(c: Counter, n: Int) {
+        val all = JSONObject(str("counters", "{}"))
+        val day = all.optJSONObject(today().toString()) ?: JSONObject()
+        day.put(c.name, day.optInt(c.name) + n)
+        all.put(today().toString(), day)
+        prefs.edit().putString("counters", all.toString()).apply()
+    }
 
     fun bump(c: Counter) {
         val all = JSONObject(str("counters", "{}"))

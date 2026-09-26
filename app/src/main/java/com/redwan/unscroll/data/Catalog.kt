@@ -8,11 +8,11 @@ object Catalog {
         INSTAGRAM("ig", "Instagram", "com.instagram.android", "Reels"),
         FACEBOOK("fb", "Facebook", "com.facebook.katana", "Reels"),
         YOUTUBE("yt", "YouTube", "com.google.android.youtube", "Shorts"),
-        REDDIT("rd", "Reddit", "com.reddit.frontpage", "the video feed"),
-        TIKTOK("tt", "TikTok", "com.zhiliaoapp.musically", "the For You feed"),
+        REDDIT("rd", "Reddit", "com.reddit.frontpage", "video feed"),
+        TIKTOK("tt", "TikTok", "com.zhiliaoapp.musically", "For You feed"),
         SNAPCHAT("sc", "Snapchat", "com.snapchat.android", "Spotlight"),
-        LINKEDIN("li", "LinkedIn", "com.linkedin.android", "the video feed"),
-        X("x", "X", "com.twitter.android", "the video feed"),
+        LINKEDIN("li", "LinkedIn", "com.linkedin.android", "video feed"),
+        X("x", "X", "com.twitter.android", "video feed"),
         INSTAGRAM_LITE("igl", "Instagram Lite", "com.instagram.lite", "Reels"),
         FACEBOOK_LITE("fbl", "Facebook Lite", "com.facebook.lite", "Reels");
 
@@ -36,20 +36,7 @@ object Catalog {
         "com.instagram.lite", "com.facebook.lite",
     )
 
-    val defaultMessages = listOf(
-        "Is this what you picked up your phone for?",
-        "You can close this and still know everything that matters.",
-        "The feed does not end. You get to.",
-        "Take three slow breaths before you decide.",
-        "What would you rather be doing right now?",
-        "Nobody will remember this video tomorrow. Future you will remember the time.",
-        "You opened this app for a reason. Did you find it?",
-        "Stand up, stretch, drink some water.",
-        "Your attention is the product here. Spend it on purpose.",
-        "Boredom is where your own ideas start.",
-    )
-
-    const val PAUSE_SENTENCE = "I am choosing to pause my protection and I know the feed is designed to keep me here"
+    const val PAUSE_SENTENCE = "snooze unscroll anyway"
 
     /** Browsers whose address bar AntiSites can read. View ids without the package prefix. */
     val browsers: Map<String, List<String>> = mapOf(
@@ -90,57 +77,4 @@ object Catalog {
 
     /** Host keywords that mark a site as adult even if it is not on the list. */
     val adultKeywords = listOf("porn", "xxx", "hentai", "xvideo", "xhamster", "nsfw", "camgirl", "sexcam", "onlyfan", "rule34")
-
-    val costs = listOf("Time", "Sleep", "Focus", "Mood and anxiety", "Relationships", "Goals and hobbies", "Presence with family", "Self respect")
-
-    data class Commitment(val title: String, val detail: String)
-
-    val commitments = listOf(
-        Commitment("Cut my short video time right down", "Keep a small daily limit and hold it."),
-        Commitment("Quit short form video for good", "No Reels, Shorts, or TikTok. Not at all."),
-        Commitment("Step away from social media", "Stop using the social feeds entirely."),
-        Commitment("Watch short videos only at a set time", "Pick one exact window and keep it small."),
-        Commitment("Only reels people send me in DMs", "From people you know. Nothing from the feed."),
-        Commitment("Something else", "Your own rule, in your own words."),
-    )
-
-    val triggers = listOf(
-        "First thing in the morning", "As soon as I unlock my phone", "The moment I sit down at home",
-        "Bored or restless", "Tired on the couch after work", "In bed at night",
-        "Waiting in line", "On the toilet", "When I should be working", "After a notification",
-        "When I feel anxious or low", "During meals", "While a video or show plays",
-    )
-
-    val replacements = listOf(
-        "Read a few pages", "Go for a short walk", "Text a friend instead", "Stretch for two minutes",
-        "Drink a glass of water", "Write one line in a journal", "Put the phone in another room",
-        "Listen to a podcast or album", "Tidy one small thing", "Just sit and breathe",
-    )
-
-    val environment = listOf(
-        "Put my phone in grayscale",
-        "Remove tempting apps from my home screen",
-        "No phone in the first and last hour of the day",
-        "Charge my phone outside the bedroom",
-        "Turn off the notifications I do not need",
-        "Log out of the apps I scroll most",
-        "Keep a book or hobby within reach",
-    )
-
-    data class Lesson(val title: String, val body: String)
-
-    val brainLessons = listOf(
-        Lesson("Variable rewards",
-            "Every swipe might bring something great, or might not. That unpredictability is the same pattern slot machines use, and it is the strongest known way to keep a behaviour going. You are not weak. The feed is tuned against you."),
-        Lesson("No natural stopping point",
-            "A book has chapters and a show has credits. An infinite feed removes every cue your brain uses to decide it is done, so the only stop left is the one you add yourself."),
-        Lesson("Short loops train short attention",
-            "Fifteen second clips reward you for switching quickly. After a while slower things, like reading or a long conversation, start to feel harder than they really are."),
-        Lesson("Habits run on triggers",
-            "Most scrolling is not a decision. A cue (boredom, a spare minute, unlocking the phone) starts a routine that pays off with a small reward. Change what happens after the cue and the habit weakens."),
-        Lesson("Friction beats willpower",
-            "Willpower is a limited resource and worst exactly when you are tired. Adding a few seconds of friction, like a popup or a missing icon, is often enough for the thinking part of your brain to catch up."),
-        Lesson("Urges pass",
-            "An urge peaks and fades within a few minutes if you do not feed it. Every time you let one pass, the next one is a little weaker."),
-    )
 }

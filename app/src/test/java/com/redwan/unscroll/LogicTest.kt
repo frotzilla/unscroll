@@ -1,7 +1,6 @@
 package com.redwan.unscroll
 
 import com.redwan.unscroll.data.BreakRule
-import com.redwan.unscroll.data.ScrollMode
 import com.redwan.unscroll.data.ScrollRule
 import com.redwan.unscroll.data.Store
 import com.redwan.unscroll.service.ScrollMeter
@@ -17,9 +16,9 @@ import java.time.LocalDateTime
 class LogicTest {
 
     @Test
-    fun strictTriggersAfterThreeMinutesOfSteadyScrolling() {
+    fun limitTriggersAfterThreeMinutesOfSteadyScrolling() {
         val m = ScrollMeter()
-        val rule = ScrollRule("app", ScrollMode.STRICT)
+        val rule = ScrollRule("app", on = true, limitSec = 180, windowSec = 20)
         var t = 1_000_000L
         var fired = -1L
         // one scroll every 10 seconds, well inside the 20 second window
@@ -33,7 +32,7 @@ class LogicTest {
     @Test
     fun aGapLongerThanTheWindowStartsANewSession() {
         val m = ScrollMeter()
-        val rule = ScrollRule("app", ScrollMode.STRICT)
+        val rule = ScrollRule("app", on = true, limitSec = 180, windowSec = 20)
         var t = 0L
         repeat(15) { assertFalse(m.onScroll(rule, t)); t += 10_000 } // 150s of scrolling
         t += 30_000 // pause longer than the 20s window
@@ -43,16 +42,24 @@ class LogicTest {
     @Test
     fun burstsFromOneFlingCountOnce() {
         val m = ScrollMeter()
-        val rule = ScrollRule("app", ScrollMode.CUSTOM, customMinScrolls = 3, customWindowSec = 10, customTriggerSec = 10)
+        val rule = ScrollRule("app", on = true, limitSec = 10, minScrolls = 3, windowSec = 10)
         // 20 events within 200ms is one gesture, so the 3 per window minimum is never met
         repeat(20) { assertFalse(m.onScroll(rule, 5_000L + it * 10)) }
     }
 
     @Test
-    fun offModeNeverTriggers() {
+    fun switchedOffNeverTriggers() {
         val m = ScrollMeter()
-        val rule = ScrollRule("app", ScrollMode.OFF)
+        val rule = ScrollRule("app", on = false)
         repeat(1000) { assertFalse(m.onScroll(rule, it * 5_000L)) }
+    }
+
+    @Test
+    fun ruleJsonRoundTrips() {
+        val r = ScrollRule("com.x", on = true, limitSec = 300, minScrolls = 2, windowSec = 15, waitSec = 90, dailyMin = 45, askIntent = true)
+        assertEquals(r, ScrollRule.fromJson(r.toJson()))
+        assertTrue(r.any)
+        assertFalse(ScrollRule("com.y").any)
     }
 
     @Test

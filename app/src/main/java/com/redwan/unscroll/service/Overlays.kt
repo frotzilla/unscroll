@@ -17,7 +17,6 @@ import android.widget.Button
 import android.widget.FrameLayout
 import android.widget.LinearLayout
 import android.widget.TextView
-import com.redwan.unscroll.data.Store
 
 /**
  * Accessibility overlays: the AntiScroll popup, the cooldown screen, and the black covers used to
@@ -34,6 +33,7 @@ class Overlays(private val service: AccessibilityService) {
 
     val modalShowing get() = modal != null
     fun modalIs(kind: String) = modalKind == kind
+    fun modalKind() = modalKind
 
     private fun dp(v: Int) = TypedValue.applyDimension(TypedValue.COMPLEX_UNIT_DIP, v.toFloat(), service.resources.displayMetrics).toInt()
 
@@ -61,7 +61,7 @@ class Overlays(private val service: AccessibilityService) {
         background = GradientDrawable().apply {
             setColor(if (filled) PINK else Color.TRANSPARENT)
             if (!filled) setStroke(dp(1), Color.GRAY)
-            cornerRadius = 0f
+            cornerRadius = dp(14).toFloat()
         }
         stateListAnimator = null
         setOnClickListener { onClick() }
@@ -73,8 +73,9 @@ class Overlays(private val service: AccessibilityService) {
         setPadding(dp(28), dp(28), dp(28), dp(28))
         views.forEach { v ->
             addView(v, LinearLayout.LayoutParams(LinearLayout.LayoutParams.MATCH_PARENT, LinearLayout.LayoutParams.WRAP_CONTENT).apply {
-                topMargin = dp(if (v is Button) 12 else 14)
-                if (v is Button) height = dp(52)
+                topMargin = dp(if (v is Button) 12 else 18)
+                if (v is Button) height = dp(54)
+                if (v is android.widget.ProgressBar) { height = dp(4); topMargin = dp(28) }
             })
         }
     }
@@ -101,58 +102,84 @@ class Overlays(private val service: AccessibilityService) {
     }
 
     /**
-     * The AntiScroll popup. "Close" is always available; "Keep scrolling" unlocks after [timeoutSec].
+     * The check-in shown when a scroll limit is reached. "I'm done" is always available;
+     * "Continue" unlocks once the wait bar fills.
      */
-    fun showScrollPopup(appLabel: String, minutes: Int, message: String, timeoutSec: Int, onClose: () -> Unit, onContinue: () -> Unit) {
-        val why = Store.why.takeIf { it.isNotBlank() }
-        val countdown = text("", 14f, Color.GRAY)
-        val keep = button("Keep scrolling", filled = false) { dismissModal(); onContinue() }.apply { isEnabled = false; alpha = 0.4f }
+    fun showCheckIn(headline: String, detail: String?, waitSec: Int, onClose: () -> Unit, onContinue: () -> Unit) {
+        val bar = android.widget.ProgressBar(service, null, android.R.attr.progressBarStyleHorizontal).apply {
+            max = 1000
+            progressTintList = android.content.res.ColorStateList.valueOf(PINK)
+            progressBackgroundTintList = android.content.res.ColorStateList.valueOf(Color.DKGRAY)
+        }
+        val cont = button("Keep scrolling", filled = false) { dismissModal(); onContinue() }.apply { isEnabled = false; alpha = 0.4f }
         val views = mutableListOf<View>(
-            text("UNSCROLL", 12f, PINK, bold = true),
-            text(if (minutes > 0) "$minutes min of nonstop scrolling on $appLabel" else "You have been scrolling $appLabel nonstop", 24f, bold = true),
-            text(message, 17f, Color.LTGRAY),
+            left(text("CHECK IN", 12f, PINK, bold = true)),
+            left(text(headline, 26f, bold = true)),
         )
-        if (why != null) views += text("Your why: $why", 15f, PINK)
-        views += countdown
-        views += button("Close $appLabel", filled = true) { dismissModal(); onClose() }
-        views += keep
+        if (detail != null) views += left(text(detail, 17f, Color.LTGRAY))
+        views += bar
+        views += button("Close app", filled = true) { dismissModal(); onClose() }
+        views += cont
         showModal("popup", column(*views.toTypedArray()))
 
-        val endAt = System.currentTimeMillis() + timeoutSec * 1000L
+        val start = System.currentTimeMillis()
+        val total = waitSec * 1000L
         tick = object : Runnable {
             override fun run() {
-                val left = ((endAt - System.currentTimeMillis()) / 1000L).toInt()
-                if (left > 0) {
-                    countdown.text = "Take a moment. You can keep going in ${left}s."
-                    main.postDelayed(this, 500)
+                val done = System.currentTimeMillis() - start
+                bar.progress = if (total <= 0) 1000 else (done * 1000 / total).toInt().coerceAtMost(1000)
+                if (done < total) {
+                    main.postDelayed(this, 100)
                 } else {
-                    countdown.text = "Your call."
-                    keep.isEnabled = true
-                    keep.alpha = 1f
+                    cont.isEnabled = true
+                    cont.alpha = 1f
                 }
             }
         }.also { main.post(it) }
     }
 
-    /** Full screen block while a cross app cooldown is running. */
-    fun showCooldown(appLabel: String, until: Long, onHome: () -> Unit) {
-        if (modalIs("cooldown")) return
-        val timer = text("", 44f, PINK, bold = true)
-        showModal("cooldown", column(
-            text("COOLDOWN", 12f, PINK, bold = true),
-            text("You hit a scroll limit", 24f, bold = true),
-            text("$appLabel is locked with your other scroll apps until the cooldown ends. Do something offline for a bit.", 16f, Color.LTGRAY),
-            timer,
-            button("Go to home screen", filled = true) { dismissModal(); onHome() },
+    /**
+     * A full screen block with a live countdown to [until]: used for lockouts, focus sessions, and
+     * used up daily allowances. Dismisses itself when the time runs out.
+     */
+    fun showTimedBlock(kind: String, tag: String, body: String, until: Long, onHome: () -> Unit) {
+        if (modalIs(kind)) return
+        val timer = text("", 56f, Color.WHITE, bold = true)
+        showModal(kind, column(
+            left(text(tag, 12f, PINK, bold = true)),
+            left(timer),
+            left(text(body, 17f, Color.LTGRAY)),
+            button("Leave", filled = true) { dismissModal(); onHome() },
         ))
         tick = object : Runnable {
             override fun run() {
                 val left = ((until - System.currentTimeMillis()) / 1000L).coerceAtLeast(0)
-                timer.text = "%d:%02d".format(left / 60, left % 60)
+                timer.text = if (left >= 3600) "%d:%02d:%02d".format(left / 3600, left / 60 % 60, left % 60) else "%d:%02d".format(left / 60, left % 60)
                 if (left > 0) main.postDelayed(this, 1000) else dismissModal()
             }
         }.also { main.post(it) }
     }
+
+    /** Asks what [appLabel] is being opened for. The options unlock after two seconds. */
+    fun showIntentGate(appLabel: String, onChoice: (browsing: Boolean) -> Unit, onLeave: () -> Unit) {
+        if (modalIs("intent")) return
+        val choices = listOf(
+            "Messages" to false,
+            "Post or search" to false,
+            "Scroll for 5 min" to true,
+        ).map { (label, browsing) ->
+            button(label, filled = false) { dismissModal(); onChoice(browsing) }.apply { isEnabled = false; alpha = 0.4f }
+        }
+        showModal("intent", column(
+            left(text("Opening $appLabel", 28f, bold = true)),
+            left(text("What for?", 17f, Color.LTGRAY)),
+            *choices.toTypedArray(),
+            button("Cancel", filled = true) { dismissModal(); onLeave() },
+        ))
+        tick = Runnable { choices.forEach { it.isEnabled = true; it.alpha = 1f } }.also { main.postDelayed(it, 2000) }
+    }
+
+    private fun left(v: TextView) = v.apply { gravity = Gravity.START }
 
     /**
      * Keeps exactly one black cover per rect. [touchable] covers eat touches (for fully hidden feeds);

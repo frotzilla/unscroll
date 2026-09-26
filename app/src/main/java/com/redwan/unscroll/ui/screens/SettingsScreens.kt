@@ -50,6 +50,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
@@ -66,84 +67,61 @@ import kotlinx.coroutines.delay
 @Composable
 fun SettingsScreen(nav: Nav) {
     val ctx = LocalContext.current
-    var confirmUninstallOff by remember { mutableStateOf(false) }
+    var confirmGuardOff by remember { mutableStateOf(false) }
     Column(Modifier.verticalScroll(rememberScrollState())) {
         TopBar("Settings")
+
         Section("Protection")
         Column(Modifier.padding(horizontal = 16.dp)) {
-            ToggleRow("Anti pause protection", "After two pauses in a day, pausing again needs a typed sentence", Store.antiPause, icon = Icons.Outlined.Spellcheck) { Store.antiPause = it }
-            ToggleRow("Hide pause button", "Take the temptation off the home screen", Store.hidePause, icon = Icons.Outlined.PauseCircle) { Store.hidePause = it }
-            ToggleRow("Prevent uninstallation", "Leave any screen that would uninstall, stop, or switch off Unscroll", Store.uninstallProtect, icon = Icons.Outlined.PhonelinkLock) { on ->
+            ToggleRow("Make snoozing harder", "After ${Store.snoozeFreeCount} snooze${if (Store.snoozeFreeCount == 1) "" else "s"} in a day, the next one needs a typed sentence", Store.antiPause, icon = Icons.Outlined.Spellcheck) { Store.antiPause = it }
+            if (Store.antiPause) {
+                Row(Modifier.padding(start = 36.dp, bottom = 8.dp), verticalAlignment = Alignment.CenterVertically) {
+                    Body("Free snoozes a day", color = C.text, modifier = Modifier.weight(1f))
+                    Stepper("${Store.snoozeFreeCount}", { Store.snoozeFreeCount = (Store.snoozeFreeCount - 1).coerceAtLeast(0) }, { Store.snoozeFreeCount = (Store.snoozeFreeCount + 1).coerceAtMost(10) })
+                }
+            }
+            ToggleRow("Hide the snooze button", "Removes it from Today", Store.hidePause, icon = Icons.Outlined.PauseCircle) { Store.hidePause = it }
+            ToggleRow("Uninstall guard", "Backs out of screens that would remove, stop, or switch off Unscroll", Store.uninstallProtect, icon = Icons.Outlined.PhonelinkLock) { on ->
                 if (on) {
                     Store.uninstallProtect = true
                     if (!AdminReceiver.isActive(ctx)) runCatching { ctx.startActivity(AdminReceiver.requestIntent(ctx)) }
                 } else {
-                    confirmUninstallOff = true
+                    confirmGuardOff = true
                 }
             }
-            ToggleRow("Block adult websites", "In supported browsers, adult sites go to your safe page", Store.adultBlock, icon = Icons.Outlined.Block) { Store.adultBlock = it }
         }
-        NavRow("Blocked sites and safe page", "${Store.blockedSites.size} custom site${if (Store.blockedSites.size == 1) "" else "s"}", icon = Icons.Outlined.Checklist) { nav.go("sites") }
-        NavRow("Password protection", "Lock Unscroll settings with a PIN", if (Store.hasPin) "ON" else "OFF", icon = Icons.Outlined.Lock) { nav.go("password") }
-        NavRow("AntiScroll popup messages", "Rotating mindful reminders", "${Store.messages.size}", icon = Icons.Outlined.Chat) { nav.go("messages") }
+        NavRow("PIN lock", "Ask for a PIN every time Unscroll opens", if (Store.hasPin) "On" else "Off", icon = Icons.Outlined.Lock) { nav.go("password") }
 
-        Section("Home screen")
+        Section("Web")
         Column(Modifier.padding(horizontal = 16.dp)) {
-            ToggleRow("Hide Breaks section", "Remove Breaks from the home screen", Store.hideBreaks, icon = Icons.Outlined.ViewAgenda) { Store.hideBreaks = it }
+            ToggleRow("Filter adult sites", "Built in list, in supported browsers", Store.adultBlock, icon = Icons.Outlined.Block) { Store.adultBlock = it }
         }
-        NavRow("Scheduled breaks", "${Store.breaks.size} scheduled", icon = Icons.Outlined.ViewAgenda) { nav.go("breaks") }
+        NavRow("Blocked sites", "${Store.blockedSites.size} of your own, plus where to land instead", icon = Icons.Outlined.Checklist) { nav.go("sites") }
 
-        Section("Help")
-        NavRow("Tips", "Your why, your rule, and what to do instead", icon = Icons.Outlined.Lightbulb) { nav.go("tips") }
-        NavRow("Troubleshooting", "Fix a stopped service or battery restrictions", icon = Icons.Outlined.Build) { nav.go("trouble") }
-        NavRow("Permissions and setup", icon = Icons.Outlined.Checklist) { nav.go("setup") }
-        NavRow("Share Unscroll", "Share it with friends and family", icon = Icons.Outlined.Share) { share(ctx) }
+        Section("About")
+        NavRow("Setup and permissions", icon = Icons.Outlined.Checklist) { nav.go("setup") }
+        NavRow("Troubleshooting", "If blocking stops working", icon = Icons.Outlined.Build) { nav.go("trouble") }
+        NavRow("Tell a friend", icon = Icons.Outlined.Share) { share(ctx) }
         Gap(20)
         Text(
-            "Unscroll ${ctx.packageManager.getPackageInfo(ctx.packageName, 0).versionName}", color = C.muted, fontSize = 12.sp,
+            "Unscroll ${ctx.packageManager.getPackageInfo(ctx.packageName, 0).versionName}. Runs entirely on this phone.", color = C.muted, fontSize = 12.sp,
             textAlign = TextAlign.Center, modifier = Modifier.fillMaxWidth(),
         )
         Gap(24)
     }
 
-    if (confirmUninstallOff) SquareDialog({ confirmUninstallOff = false }) {
-        Title("Turn off uninstall protection?", 18)
+    if (confirmGuardOff) SquareDialog({ confirmGuardOff = false }) {
+        Title("Switch off the uninstall guard?", 18)
         Gap(6)
-        Body("Unscroll will stop guarding its own settings and can be uninstalled again.")
+        Body("Unscroll will be removable again and will stop watching its own settings screens.")
         Gap()
-        PinkButton("Turn off") {
+        PinkButton("Keep it on") { confirmGuardOff = false }
+        Gap(8)
+        GhostButton("Switch off") {
             Store.uninstallProtect = false
             runCatching { AdminReceiver.remove(ctx) }
-            confirmUninstallOff = false
+            confirmGuardOff = false
         }
-        Gap(8)
-        GhostButton("Keep it on") { confirmUninstallOff = false }
-    }
-}
-
-@Composable
-fun MessagesScreen(onBack: () -> Unit) {
-    var draft by remember { mutableStateOf("") }
-    Column(Modifier.verticalScroll(rememberScrollState())) {
-        TopBar("Popup messages", onBack)
-        Body("One of these shows on each AntiScroll popup, in turn.", modifier = Modifier.padding(horizontal = 16.dp))
-        Gap()
-        Column(Modifier.padding(horizontal = 12.dp)) {
-            Field(draft, { draft = it }, "Write your own reminder")
-            Gap(8)
-            PinkButton("Add", enabled = draft.isNotBlank()) { Store.messages = listOf(draft.trim()) + Store.messages; draft = "" }
-            Gap()
-            Store.messages.forEach { m ->
-                Row(Modifier.fillMaxWidth().background(C.card).padding(14.dp), verticalAlignment = Alignment.CenterVertically) {
-                    Body(m, color = C.text, modifier = Modifier.weight(1f))
-                    Icon(Icons.Filled.Close, "Remove", tint = C.muted, modifier = Modifier.clickable { Store.messages = Store.messages - m })
-                }
-                Gap(6)
-            }
-            Gap()
-            GhostButton("Reset to defaults") { Store.messages = Catalog.defaultMessages }
-        }
-        Gap(24)
     }
 }
 
@@ -154,33 +132,33 @@ fun SitesScreen(onBack: () -> Unit) {
     Column(Modifier.verticalScroll(rememberScrollState())) {
         TopBar("Blocked sites", onBack)
         Column(Modifier.padding(horizontal = 12.dp)) {
-            Card { ToggleRow("Block adult websites", "Built in list of adult sites and keywords", Store.adultBlock) { Store.adultBlock = it } }
-            Section("Your blocked sites")
-            Body("Add a domain like reddit.com (blocks its subdomains too) or a word to match anywhere in the address.")
+            Card { ToggleRow("Filter adult sites", "Built in list of domains and keywords", Store.adultBlock) { Store.adultBlock = it } }
+            Section("Your list")
+            Body("A domain such as reddit.com covers its subdomains too. A single word blocks any address containing it.")
             Gap(8)
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Field(site, { site = it }, "example.com", Modifier.weight(1f), singleLine = true)
             }
             Gap(8)
-            PinkButton("Add site", enabled = site.isNotBlank()) {
+            PinkButton("Add", enabled = site.isNotBlank()) {
                 Store.blockedSites = Store.blockedSites + site.trim().lowercase().removePrefix("https://").removePrefix("http://").removePrefix("www.").trimEnd('/')
                 site = ""
             }
             Gap()
             Store.blockedSites.sorted().forEach { s ->
-                Row(Modifier.fillMaxWidth().background(C.card).padding(14.dp), verticalAlignment = Alignment.CenterVertically) {
+                Row(Modifier.fillMaxWidth().clip(Round).background(C.card).padding(14.dp), verticalAlignment = Alignment.CenterVertically) {
                     Body(s, color = C.text, modifier = Modifier.weight(1f))
                     Icon(Icons.Filled.Close, "Remove", tint = C.muted, modifier = Modifier.clickable { Store.blockedSites = Store.blockedSites - s })
                 }
                 Gap(6)
             }
-            Section("Safe page")
-            Body("Where you land instead of a blocked site. Leave empty to just go back.")
+            Section("Land here instead")
+            Body("Opens in place of a blocked site. Leave it empty to simply go back.")
             Gap(8)
             Field(safe, { safe = it }, "https://...", singleLine = true)
             Gap(8)
-            PinkButton("Save safe page", enabled = safe != Store.safeUrl) { Store.safeUrl = safe.trim() }
-            Section("Supported browsers")
+            PinkButton("Save", enabled = safe != Store.safeUrl) { Store.safeUrl = safe.trim() }
+            Section("Works in")
             Body("Chrome, Vivaldi, Brave, Edge, Firefox, Samsung Internet, Opera, DuckDuckGo, Kiwi, Ecosia. Blocking needs the Unscroll accessibility service.")
         }
         Gap(24)
@@ -194,9 +172,9 @@ fun PasswordScreen(onBack: () -> Unit) {
     var confirm by remember { mutableStateOf("") }
     var msg by remember { mutableStateOf<String?>(null) }
     Column(Modifier.verticalScroll(rememberScrollState())) {
-        TopBar("Password protection", onBack)
+        TopBar("PIN lock", onBack)
         Column(Modifier.padding(horizontal = 16.dp)) {
-            Body("A PIN keeps you (or anyone else) from turning protection off on impulse. Unscroll asks for it every time it opens. There is no recovery, so pick one you will remember.")
+            Body("With a PIN, changing any rule takes a deliberate step. It is asked for each time Unscroll opens. Forgetting it means clearing the app, so choose carefully.")
             Gap()
             if (Store.hasPin) {
                 Field(current, { current = it.filter(Char::isDigit).take(8) }, "Current PIN", singleLine = true, number = true, secret = true)
@@ -229,9 +207,9 @@ fun LockScreen(onUnlock: () -> Unit) {
     Column(Modifier.fillMaxSize().padding(24.dp), horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.Center) {
         Icon(Icons.Outlined.Lock, null, tint = C.pink, modifier = Modifier.size(40.dp))
         Gap()
-        Title("Unscroll is locked", 22)
+        Title("Enter PIN", 22)
         Gap(6)
-        Body(if (wrong > 0) "Wrong PIN, try again" else "Enter your PIN", color = if (wrong > 0) C.warn else C.muted)
+        Body(if (wrong > 0) "That was not it" else "Unscroll settings are locked", color = if (wrong > 0) C.warn else C.muted)
         Gap(20)
         Text("● ".repeat(pin.length).ifEmpty { " " }, color = C.text, fontSize = 22.sp)
         Gap(20)
@@ -240,7 +218,7 @@ fun LockScreen(onUnlock: () -> Unit) {
             Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
                 row.forEach { k ->
                     Box(
-                        Modifier.size(76.dp, 60.dp).then(if (k.isEmpty()) Modifier else Modifier.border(1.dp, C.line).clickable {
+                        Modifier.size(76.dp, 60.dp).then(if (k.isEmpty()) Modifier else Modifier.clip(Round).border(1.dp, C.line, Round).clickable {
                             if (k == "<") pin = pin.dropLast(1)
                             else if (pin.length < 8) {
                                 pin += k
@@ -314,7 +292,7 @@ fun TroubleshootingScreen(onBack: () -> Unit) {
         NavRow("Remove battery restrictions", "Stops Android from killing Unscroll in the background", icon = Icons.Outlined.PauseCircle) { requestBattery(ctx) }
         if (samsung) {
             Card(Modifier.padding(horizontal = 12.dp)) {
-                Title("Samsung steps", 15)
+                Title("On Samsung", 15)
                 Gap(6)
                 listOf(
                     "Settings, Battery, Background usage limits: add Unscroll to Never sleeping apps.",
@@ -344,31 +322,31 @@ fun SetupScreen(onDone: () -> Unit, onBack: (() -> Unit)?) {
     Column(Modifier.verticalScroll(rememberScrollState())) {
         TopBar("Set up Unscroll", onBack)
         Column(Modifier.padding(horizontal = 16.dp)) {
-            Title("Take back the time you did not mean to spend.", 20)
+            Title("Welcome to Unscroll", 22)
             Gap(6)
-            Body("Unscroll blocks Reels and Shorts, interrupts long scrolling sessions, and keeps you honest with your own rules. It all runs on your phone. Nothing is uploaded.")
+            Body("It blocks the endless parts of apps, like Reels and Shorts, and helps you set limits you will actually keep. Everything stays on this phone.")
         }
         Gap()
-        Step(1, "Accessibility service", "Required. This is how Unscroll sees Reels and scrolling.", a11y) { disclosure = true }
-        Step(2, "Battery restrictions", "Recommended. Keeps Android from stopping Unscroll.", batteryIgnored(ctx)) { requestBattery(ctx) }
-        Step(3, "Usage access", "Optional. Powers screen time Insights.", Usage.granted(ctx)) { ctx.startActivity(Intent(Settings.ACTION_USAGE_ACCESS_SETTINGS)) }
+        Step(1, "Accessibility service", "Needed. Lets Unscroll recognise short videos and feeds.", a11y) { disclosure = true }
+        Step(2, "Battery restrictions", "Recommended. Stops Android from closing Unscroll to save power.", batteryIgnored(ctx)) { requestBattery(ctx) }
+        Step(3, "Usage access", "Optional. Shows your screen time on Today.", Usage.granted(ctx)) { ctx.startActivity(Intent(Settings.ACTION_USAGE_ACCESS_SETTINGS)) }
         Gap(20)
         Column(Modifier.padding(horizontal = 16.dp)) {
-            PinkButton(if (a11y) "Done" else "Skip for now", onClick = onDone)
+            PinkButton(if (a11y) "Start" else "Later", onClick = onDone)
         }
         Gap(24)
     }
 
     if (disclosure) SquareDialog({ disclosure = false }) {
-        Title("How Unscroll uses accessibility", 18)
+        Title("About the accessibility permission", 18)
         Gap(8)
         listOf(
             "It reads which app is open and the structure of its screen, so it can recognise Reels, Shorts, feeds, and browser addresses.",
-            "It can press Back or Home, and draw covers or a popup over other apps.",
+            "It can press Back or Home, and draw covers or a check in screen over other apps.",
             "It never records what you type, never takes screenshots, and sends nothing off your phone.",
         ).forEach { Body("• $it", color = C.text, modifier = Modifier.padding(bottom = 8.dp)) }
         Gap(4)
-        Body("In the next screen, open Installed apps (or Downloaded apps), pick Unscroll protection, and switch it on.")
+        Body("Next, find Unscroll protection under Installed apps (sometimes called Downloaded apps) and switch it on.")
         Gap()
         PinkButton("Open settings") { disclosure = false; openAccessibility(ctx) }
         Gap(8)
@@ -379,10 +357,10 @@ fun SetupScreen(onDone: () -> Unit, onBack: (() -> Unit)?) {
 @Composable
 private fun Step(n: Int, title: String, sub: String, done: Boolean, onClick: () -> Unit) {
     Row(
-        Modifier.fillMaxWidth().padding(horizontal = 12.dp, vertical = 5.dp).background(C.card).clickable(enabled = !done, onClick = onClick).padding(16.dp),
+        Modifier.fillMaxWidth().padding(horizontal = 12.dp, vertical = 5.dp).clip(Round).background(C.card).clickable(enabled = !done, onClick = onClick).padding(16.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
-        Box(Modifier.size(32.dp).background(if (done) C.pink else C.card2), contentAlignment = Alignment.Center) {
+        Box(Modifier.size(32.dp).clip(androidx.compose.foundation.shape.CircleShape).background(if (done) C.pink else C.card2), contentAlignment = Alignment.Center) {
             Text(if (done) "✓" else "$n", color = if (done) androidx.compose.ui.graphics.Color.Black else C.text, fontWeight = FontWeight.Bold)
         }
         Spacer(Modifier.width(14.dp))

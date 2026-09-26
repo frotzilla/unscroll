@@ -3,46 +3,44 @@ package com.redwan.unscroll.data
 import org.json.JSONArray
 import org.json.JSONObject
 
-/** How eagerly AntiScroll interrupts a scrolling session. */
-enum class ScrollMode(val label: String, val windowSec: Int, val minScrolls: Int, val triggerSec: Int, val blurb: String) {
-    OFF("OFF", 0, 0, 0,
-        "AntiScroll is off for this app. Scroll as much as you want."),
-    CHILL("CHILL", 30, 1, 15 * 60,
-        "CHILL is the most relaxed mode. The popup shows after about 15 minutes of continuous scrolling.\n\nGood for when you are just hanging out and do not mind a bit more time on your phone."),
-    NORMAL("NORMAL", 20, 1, 8 * 60,
-        "NORMAL balances restriction and freedom. The popup shows after about 8 minutes of continuous scrolling.\n\nGood for daily use when you want to stay connected without losing hours to the feed."),
-    STRICT("STRICT", 20, 1, 3 * 60,
-        "STRICT is the most rigorous mode. The popup shows after about 3 minutes of continuous scrolling."),
-    CUSTOM("CUSTOM", 0, 0, 0, "");
-}
-
-/** Per app AntiScroll configuration. */
+/**
+ * A scroll limit for one app. Scrolling counts as continuous while every [windowSec] seconds contain
+ * at least [minScrolls] swipes; after [limitSec] of that, a check-in appears. The check-in can be
+ * dismissed after [waitSec].
+ */
 data class ScrollRule(
     val pkg: String,
-    val mode: ScrollMode = ScrollMode.OFF,
-    val customMinScrolls: Int = 1,
-    val customWindowSec: Int = 20,
-    val customTriggerSec: Int = 180,
-    val popupTimeoutSec: Int = 60,
+    val on: Boolean = false,
+    val limitSec: Int = 10 * 60,
+    val minScrolls: Int = 1,
+    val windowSec: Int = 20,
+    val waitSec: Int = 45,
+    /** Minutes allowed per day, 0 for no allowance. */
+    val dailyMin: Int = 0,
+    /** Ask what the app is being opened for. */
+    val askIntent: Boolean = false,
 ) {
-    val windowSec get() = if (mode == ScrollMode.CUSTOM) customWindowSec else mode.windowSec
-    val minScrolls get() = if (mode == ScrollMode.CUSTOM) customMinScrolls else mode.minScrolls
-    val triggerSec get() = if (mode == ScrollMode.CUSTOM) customTriggerSec else mode.triggerSec
-    val active get() = mode != ScrollMode.OFF
+    val active get() = on && limitSec > 0
+    val any get() = active || dailyMin > 0 || askIntent
 
     fun toJson() = JSONObject()
-        .put("pkg", pkg).put("mode", mode.name)
-        .put("min", customMinScrolls).put("win", customWindowSec)
-        .put("trig", customTriggerSec).put("pop", popupTimeoutSec)
+        .put("pkg", pkg).put("on", on).put("limit", limitSec)
+        .put("min", minScrolls).put("win", windowSec).put("wait", waitSec)
+        .put("daily", dailyMin).put("ask", askIntent)
 
     companion object {
+        val limitPresets = listOf(5, 10, 20)
+        val waitPresets = listOf(15, 45, 90)
+
         fun fromJson(o: JSONObject) = ScrollRule(
             pkg = o.getString("pkg"),
-            mode = runCatching { ScrollMode.valueOf(o.optString("mode")) }.getOrDefault(ScrollMode.OFF),
-            customMinScrolls = o.optInt("min", 1),
-            customWindowSec = o.optInt("win", 20),
-            customTriggerSec = o.optInt("trig", 180),
-            popupTimeoutSec = o.optInt("pop", 60),
+            on = o.optBoolean("on", false),
+            limitSec = o.optInt("limit", 600),
+            minScrolls = o.optInt("min", 1),
+            windowSec = o.optInt("win", 20),
+            waitSec = o.optInt("wait", 45),
+            dailyMin = o.optInt("daily", 0),
+            askIntent = o.optBoolean("ask", false),
         )
     }
 }
@@ -82,15 +80,6 @@ data class BreakRule(
             relaxScroll = o.optBoolean("scroll", true),
             enabled = o.optBoolean("on", true),
         )
-    }
-}
-
-/** A trigger the user named, and what they plan to do instead. */
-data class TriggerPlan(val trigger: String, val instead: String) {
-    fun toJson() = JSONObject().put("t", trigger).put("i", instead)
-
-    companion object {
-        fun fromJson(o: JSONObject) = TriggerPlan(o.optString("t"), o.optString("i"))
     }
 }
 
