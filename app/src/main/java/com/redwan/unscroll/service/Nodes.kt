@@ -7,10 +7,15 @@ import android.view.accessibility.AccessibilityNodeInfo
 /** Small helpers for walking accessibility trees. */
 object Nodes {
 
-    /** Visible nodes with the given view id (without the package prefix). */
-    fun byId(root: AccessibilityNodeInfo, pkg: String, id: String): List<AccessibilityNodeInfo> =
-        runCatching { root.findAccessibilityNodeInfosByViewId("$pkg:id/$id") }.getOrNull()
+    /**
+     * Visible nodes with the given view id (without the package prefix). Apps also reuse framework
+     * ids such as android:id/list, so those are tried when the app's own id finds nothing.
+     */
+    fun byId(root: AccessibilityNodeInfo, pkg: String, id: String): List<AccessibilityNodeInfo> {
+        fun find(full: String) = runCatching { root.findAccessibilityNodeInfosByViewId(full) }.getOrNull()
             .orEmpty().filter { it.isVisibleToUser }
+        return find("$pkg:id/$id").ifEmpty { find("android:id/$id") }
+    }
 
     fun firstId(root: AccessibilityNodeInfo, pkg: String, ids: List<String>): AccessibilityNodeInfo? {
         for (id in ids) byId(root, pkg, id).firstOrNull()?.let { return it }

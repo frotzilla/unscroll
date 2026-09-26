@@ -54,6 +54,7 @@ class GuardService : AccessibilityService() {
         val imm = getSystemService(Context.INPUT_METHOD_SERVICE) as InputMethodManager
         ignored = imm.enabledInputMethodList.map { it.packageName }.toSet() + setOf(packageName, "com.android.systemui")
         Store.serviceExpected = true
+        rootInActiveWindow?.packageName?.toString()?.takeIf { it !in ignored }?.let { fg = it; fgSince = System.currentTimeMillis() }
     }
 
     override fun onUnbind(intent: android.content.Intent?): Boolean {
@@ -84,7 +85,10 @@ class GuardService : AccessibilityService() {
         refreshCache()
         val now = System.currentTimeMillis()
 
-        if (e.eventType == AccessibilityEvent.TYPE_WINDOW_STATE_CHANGED && pkg != fg) onForeground(pkg, now)
+        // resuming an app does not always send a window change, so also trust the active window
+        if (pkg != fg && (e.eventType == AccessibilityEvent.TYPE_WINDOW_STATE_CHANGED || rootInActiveWindow?.packageName == pkg)) {
+            onForeground(pkg, now)
+        }
 
         // uninstall protection keeps working while paused
         if (self.watches(pkg)) {

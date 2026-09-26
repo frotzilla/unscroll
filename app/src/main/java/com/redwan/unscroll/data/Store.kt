@@ -15,11 +15,21 @@ import java.time.LocalDateTime
  * always reads the latest values. [rev] bumps on every write so Compose screens recompose.
  */
 object Store {
-    private lateinit var sp: SharedPreferences
+    private lateinit var prefs: SharedPreferences
     val rev = mutableIntStateOf(0)
 
+    /**
+     * Every read goes through here and touches [rev], so any composable that shows a setting
+     * redraws when a setting changes, even deep inside cards Compose would otherwise skip.
+     */
+    private val sp: SharedPreferences
+        get() {
+            rev.intValue
+            return prefs
+        }
+
     fun init(ctx: Context) {
-        sp = ctx.getSharedPreferences("unscroll", Context.MODE_PRIVATE)
+        prefs = ctx.getSharedPreferences("unscroll", Context.MODE_PRIVATE)
         if (!sp.contains("streak_start_day")) sp.edit().putLong("streak_start_day", today()).apply()
     }
 
