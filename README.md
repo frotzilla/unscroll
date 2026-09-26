@@ -2,6 +2,17 @@
 
 Android app that blocks the endless parts of other apps (Reels, Shorts, For You feeds) and puts hard limits on scrolling. Runs entirely on the phone through an accessibility service. No accounts, no network.
 
+<p>
+  <img src="docs/screenshots/today.png" width="200" alt="Today screen">
+  <img src="docs/screenshots/apps.png" width="200" alt="Apps list">
+  <img src="docs/screenshots/app-instagram.png" width="200" alt="Instagram rules">
+</p>
+<p>
+  <img src="docs/screenshots/intent.png" width="200" alt="Open with intent prompt">
+  <img src="docs/screenshots/focus-block.png" width="200" alt="App blocked during a focus session">
+  <img src="docs/screenshots/settings.png" width="200" alt="Settings">
+</p>
+
 ## Features
 
 **Short video blocking**
@@ -20,13 +31,17 @@ Android app that blocks the endless parts of other apps (Reels, Shorts, For You 
 - Focus sessions: lock every watched app for 25, 50, or 90 minutes.
 - Lockout: after any check in, every limited app (plus extras you add) locks for a set time.
 - Free time: scheduled windows, including overnight, when rules relax for all or chosen apps.
-- Snooze with an optional typed sentence after a set number of snoozes per day, and a hideable snooze button.
+- Snooze for a set time, or turn everything off until you turn it back on (with a confirmation). Optional typed sentence after a set number of snoozes per day, and a hideable snooze button. Focus sessions keep running through a snooze.
 - PIN lock and an uninstall guard (device admin plus backing out of uninstall, force stop, and service toggle screens).
 - Web filter: built in adult site list and your own list in 10 browsers, with a landing page instead.
 
 **Today and Insights**
 - Time in watched apps today with a 7 day chart, clean days (no snoozes), and a rough distance scrolled.
 - Per app screen time for a day, week, or month, plus counts of blocks, check ins, lockouts, focus sessions, and opens cancelled.
+
+## Install
+
+Grab the APK from [Releases](../../releases), or build it yourself.
 
 ## Build
 
@@ -46,3 +61,7 @@ Other apps change their layouts often. Detection lives in `service/ReelsGuard.kt
 ```bash
 adb logcat -s 'UnscrollDiag/com.instagram.android:D'
 ```
+
+## License
+
+GPL-3.0. See [LICENSE](LICENSE).
