@@ -7,3 +7,8 @@ local.properties
 .idea/
 *.iml
 .DS_Store
+
+# release signing
+keystore.properties
+*.jks
+*.keystore
