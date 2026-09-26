@@ -64,4 +64,6 @@ adb logcat -s 'UnscrollDiag/com.instagram.android:D'
 
 ## License
 
-GPL-3.0. See [LICENSE](LICENSE).
+Copyright (C) 2026 Redwan Hossain
+
+Licensed under the GNU General Public License v3.0. See [LICENSE](LICENSE).
