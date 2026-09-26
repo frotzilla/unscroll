@@ -69,7 +69,7 @@ class GuardService : AccessibilityService() {
     private val ticker = object : Runnable {
         override fun run() {
             flushUsage()
-            if (fg.isNotEmpty() && screenOn && !Store.paused) enforce(fg, System.currentTimeMillis())
+            if (fg.isNotEmpty() && screenOn) enforce(fg, System.currentTimeMillis())
             mainHandler.postDelayed(this, 5000)
         }
     }
@@ -149,6 +149,7 @@ class GuardService : AccessibilityService() {
         if (e.eventType == AccessibilityEvent.TYPE_VIEW_SCROLLED) countDistance(pkg, now)
         if (Store.paused) {
             overlays.clearCovers()
+            if (pkg == fg) enforce(pkg, now) // a focus session outlasts a pause
             return
         }
         if (pkg == fg && enforce(pkg, now)) return
@@ -205,6 +206,7 @@ class GuardService : AccessibilityService() {
             block("focus", "FOCUS SESSION", "${label(pkg)} is off limits until your focus session ends.", focusEnd)
             return true
         }
+        if (Store.paused) return false
         if (onBreak(pkg, false)) return false
 
         val rule = rules[pkg]

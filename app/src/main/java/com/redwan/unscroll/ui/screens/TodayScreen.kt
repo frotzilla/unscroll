@@ -82,6 +82,7 @@ fun TodayScreen(nav: Nav) {
         !enabled -> "Off" to C.warn
         !GuardService.running -> "Stopped" to C.warn
         focusing -> "Focus ${clock(Store.focusUntil - now)}" to C.pink
+        snoozed && Store.pausedIndefinitely -> "Turned off" to C.warn
         snoozed -> "Snoozed ${clock(Store.pauseUntil - now)}" to C.warn
         else -> "Guarding" to C.pink
     }
@@ -99,7 +100,18 @@ fun TodayScreen(nav: Nav) {
                 if (enabled) "Android stopped Unscroll in the background. Tap to fix it." else "Protection is not switched on yet. Tap to finish setup.",
             ) { nav.go(if (enabled) "trouble" else "setup") }
         }
-        if (snoozed) Banner("Snoozed. Everything switches back on in ${clock(Store.pauseUntil - now)}. Tap to resume now.") { Store.endPause() }
+        if (snoozed) {
+            if (Store.pausedIndefinitely) {
+                Column(Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 6.dp).clip(Round).background(C.warn.copy(alpha = 0.16f)).padding(16.dp)) {
+                    Title("Unscroll is turned off")
+                    Body("Nothing is being blocked or limited until you turn it back on.", color = C.text, size = 13)
+                    Gap()
+                    PinkButton("Turn back on") { Store.endPause() }
+                }
+            } else {
+                Banner("Snoozed. Everything switches back on in ${clock(Store.pauseUntil - now)}. Tap to resume now.") { Store.endPause() }
+            }
+        }
 
         if (focusing) {
             Column(Modifier.fillMaxWidth().padding(16.dp).clip(Round).background(C.pink).padding(20.dp)) {
@@ -260,10 +272,28 @@ fun SnoozeDialog(onDismiss: () -> Unit) {
     var typed by remember { mutableStateOf("") }
     val needSentence = Store.antiPause && Store.pausesToday() >= Store.snoozeFreeCount
     val ok = !needSentence || typed.trim().equals(Catalog.PAUSE_SENTENCE, ignoreCase = true)
+    var confirmOff by remember { mutableStateOf(false) }
     fun snooze(m: Int) {
         if (!ok || m <= 0) return
         Store.startPause(m)
         onDismiss()
+    }
+    if (confirmOff) {
+        SquareDialog(onDismiss) {
+            Title("Turn Unscroll off?", 20)
+            Gap(6)
+            Body("Short video blocking, scroll limits, allowances, lockouts, and the web filter stay off until you turn them back on yourself. Nothing switches back on automatically.")
+            Gap(8)
+            Body("Focus sessions and the uninstall guard keep running. Your clean days reset.", size = 13)
+            Gap()
+            PinkButton("Keep it on", onClick = onDismiss)
+            Gap(8)
+            GhostButton("Turn off") {
+                Store.pauseIndefinitely()
+                onDismiss()
+            }
+        }
+        return
     }
     SquareDialog(onDismiss) {
         Title("Snooze protection", 20)
@@ -291,6 +321,11 @@ fun SnoozeDialog(onDismiss: () -> Unit) {
         PinkButton("Snooze", enabled = ok) { snooze(custom) }
         Gap(8)
         GhostButton("Cancel", onClick = onDismiss)
+        Gap(14)
+        Text(
+            "Turn off completely", color = if (ok) C.warn else C.muted, fontSize = 14.sp,
+            modifier = Modifier.align(Alignment.CenterHorizontally).clip(Round).clickable(enabled = ok) { confirmOff = true }.padding(horizontal = 12.dp, vertical = 8.dp),
+        )
     }
 }
 

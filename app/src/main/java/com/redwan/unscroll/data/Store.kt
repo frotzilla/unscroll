@@ -99,10 +99,17 @@ object Store {
 
     fun pausesToday(): Int = if (sp.getLong("pauses_day", -1) == today()) sp.getInt("pauses_count", 0) else 0
 
-    fun startPause(minutes: Int) {
+    /** Paused with no end time: stays off until the user turns it back on. */
+    val pausedIndefinitely get() = pauseUntil == Long.MAX_VALUE
+
+    fun startPause(minutes: Int) = pauseUntil(System.currentTimeMillis() + minutes * 60_000L)
+
+    fun pauseIndefinitely() = pauseUntil(Long.MAX_VALUE)
+
+    private fun pauseUntil(until: Long) {
         val count = pausesToday() + 1
         edit {
-            putLong("pause_until", System.currentTimeMillis() + minutes * 60_000L)
+            putLong("pause_until", until)
             putLong("pauses_day", today())
             putInt("pauses_count", count)
             putLong("last_pause_day", today())
