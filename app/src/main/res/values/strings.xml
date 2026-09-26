@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">Unscroll</string>
+    <string name="service_label">Unscroll protection</string>
+    <string name="service_description">Unscroll reads what is on screen in the apps you choose so it can close Reels and Shorts, notice long scrolling sessions, block the websites you picked, and stop itself from being removed while protection is on. Nothing leaves your phone.</string>
+    <string name="widget_label">My why</string>
+    <string name="widget_title">My why</string>
+    <string name="widget_empty">Open Unscroll and write down why you want your time back.</string>
+    <string name="widget_description">Keeps your reason for scrolling less on the home screen.</string>
+    <string name="admin_disable_warning">Turning this off removes uninstall protection. Unscroll will stop guarding itself.</string>
+</resources>
